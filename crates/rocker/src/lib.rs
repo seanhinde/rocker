@@ -37,7 +37,7 @@ rustler_export_nifs!(
         ("lxcode", 0, lxcode), // library version code
         ("open", 2, open), // open db with options
         ("open_default", 1, open_default), // open db with defaults
-        ("open_cf", 2, open_cf), // open db with options and cfs
+        ("open_cf", 3, open_cf), // open db with options and cfs
         ("open_cf_default", 2, open_cf_default), // open db with default options and cfs
         ("destroy", 1 , destroy, SchedulerFlags::DirtyIo), //destroy db and data
         ("repair", 1 , repair, SchedulerFlags::DirtyIo), //repair db
@@ -204,7 +204,7 @@ fn open_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let path: String = args[0].decode()?;
     let iter: MapIterator = args[1].decode()?;
 
-        let mut opts = Options::default();
+    let mut opts = Options::default();
     for (key, value) in iter {
         let param = key.atom_to_string()?;
         match param.as_str() {
