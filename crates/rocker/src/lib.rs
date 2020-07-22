@@ -37,6 +37,7 @@ rustler_export_nifs!(
         ("lxcode", 0, lxcode), // library version code
         ("open", 2, open), // open db with options
         ("open_default", 1, open_default), // open db with defaults
+        ("open_cf", 2, open_cf), // open db with options and cfs
         ("open_cf_default", 2, open_cf_default), // open db with default options and cfs
         ("destroy", 1 , destroy, SchedulerFlags::DirtyIo), //destroy db and data
         ("repair", 1 , repair, SchedulerFlags::DirtyIo), //repair db
@@ -197,6 +198,118 @@ fn open_default<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
         }
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
+}
+
+fn open_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let path: String = args[0].decode()?;
+    let iter: MapIterator = args[1].decode()?;
+
+        let mut opts = Options::default();
+    for (key, value) in iter {
+        let param = key.atom_to_string()?;
+        match param.as_str() {
+            "create_if_missing" => {
+                if value.atom_to_string()?.as_str() == "true" {
+                    opts.create_if_missing(true);
+                }
+            }
+            "create_missing_column_families" => {
+                if value.atom_to_string()?.as_str() == "true" {
+                    opts.create_missing_column_families(true);
+                }
+            }
+            "set_max_open_files" => {
+                let limit: i32 = value.decode()?;
+                opts.set_max_open_files(limit);
+            }
+            "set_use_fsync" => {
+                if value.atom_to_string()?.as_str() == "true" {
+                    opts.set_use_fsync(true);
+                }
+            }
+            "set_bytes_per_sync" => {
+                let limit: u64 = value.decode()?;
+                opts.set_bytes_per_sync(limit);
+            }
+            "optimize_for_point_lookup" => {
+                let limit: u64 = value.decode()?;
+                opts.optimize_for_point_lookup(limit);
+            }
+            "set_table_cache_num_shard_bits" => {
+                let limit: i32 = value.decode()?;
+                opts.set_table_cache_num_shard_bits(limit);
+            }
+            "set_max_write_buffer_number" => {
+                let limit: i32 = value.decode()?;
+                opts.set_max_write_buffer_number(limit);
+            }
+            "set_write_buffer_size" => {
+                let limit: usize = value.decode()?;
+                opts.set_write_buffer_size(limit);
+            }
+            "set_target_file_size_base" => {
+                let limit: u64 = value.decode()?;
+                opts.set_target_file_size_base(limit);
+            }
+            "set_min_write_buffer_number_to_merge" => {
+                let limit: i32 = value.decode()?;
+                opts.set_min_write_buffer_number_to_merge(limit);
+            }
+            "set_level_zero_stop_writes_trigger" => {
+                let limit: i32 = value.decode()?;
+                opts.set_level_zero_stop_writes_trigger(limit);
+            }
+            "set_level_zero_slowdown_writes_trigger" => {
+                let limit: i32 = value.decode()?;
+                opts.set_level_zero_slowdown_writes_trigger(limit);
+            }
+            "set_max_background_compactions" => {
+                let limit: i32 = value.decode()?;
+                opts.set_max_background_compactions(limit);
+            }
+            "set_max_background_flushes" => {
+                let limit: i32 = value.decode()?;
+                opts.set_max_background_flushes(limit);
+            }
+            "set_disable_auto_compactions" => {
+                if value.atom_to_string()?.as_str() == "true" {
+                    opts.set_disable_auto_compactions(true);
+                }
+            }
+            "set_compaction_style" => {
+                let style = value.atom_to_string()?;
+                if style == "level" {
+                    opts.set_compaction_style(DBCompactionStyle::Level);
+                } else if style == "universal" {
+                    opts.set_compaction_style(DBCompactionStyle::Universal);
+                } else if style == "fifo" {
+                    opts.set_compaction_style(DBCompactionStyle::Fifo);
+                }
+            }
+            "prefix_length" => {
+                let limit: usize = value.decode()?;
+                let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(limit);
+                opts.set_prefix_extractor(prefix_extractor);
+            }
+            _ => {}
+        }
+    }
+    
+    let iter: ListIterator = args[2].decode()?;
+    let mut cfs: Vec<String> = Vec::new();
+    for elem in iter {
+        let name: String = elem.decode()?;
+        cfs.push(name);
+    }
+    let cfs2: Vec<&str> = cfs.iter().map(|s| &**s).collect();
+    let resource = ResourceArc::new(DbResource {
+        db: RwLock::new(
+            DB::open_cf(&opts, path.clone(), &cfs2).unwrap()
+        ),
+        path: path.clone(),
+    });
+
+    Ok((atoms::ok(), resource.encode(env)).encode(env))
 }
 
 

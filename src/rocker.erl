@@ -4,6 +4,7 @@
 -export([lxcode/0,
          open/2,
          open_default/1,
+         open_cf/3,
          open_cf_default/2,
          destroy/1,
          repair/1,
@@ -42,6 +43,9 @@ open(_Path, _Options) ->
     not_loaded(?LINE).
 
 open_default(_Path) ->
+    not_loaded(?LINE).
+
+open_cf(_Path, _Options, _Cfs) ->
     not_loaded(?LINE).
 
 open_cf_default(_Path, _Cfs) ->
