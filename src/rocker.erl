@@ -11,6 +11,7 @@
          path/1,
          put/3,
          get/2,
+         get_opt/2,
          delete/2,
          tx/2,
          iterator/2,
