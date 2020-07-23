@@ -3,7 +3,7 @@ extern crate rocksdb;
 #[macro_use]
 extern crate rustler;
 
-use rocksdb::{DB, DBCompactionStyle, DBCompressionType, Direction, IteratorMode, Options, WriteBatch};
+use rocksdb::{DB, DBCompactionStyle, DBCompressionType, Direction, IteratorMode, Options, WriteBatch, BlockBasedOptions};
 use rocksdb::DBIterator;
 use rustler::{Encoder, Env, NifResult, Term};
 use rustler::resource::ResourceArc;
@@ -166,6 +166,13 @@ fn open<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
                 // } else if compression_type == "Zstd" {
                 //     opts.set_compression_type(DBCompressionType::Zstd);
                 }
+            }
+            "disable_cache" => {
+                let mut block_based_options = BlockBasedOptions::default();
+
+                block_based_options.disable_cache();
+
+                opts.set_block_based_table_factory(&block_based_options);
             }
             "set_compaction_style" => {
                 let style = value.atom_to_string()?;
