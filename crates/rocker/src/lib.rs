@@ -3,7 +3,7 @@ extern crate rocksdb;
 #[macro_use]
 extern crate rustler;
 
-use rocksdb::{DB, DBCompactionStyle, Direction, IteratorMode, Options, WriteBatch};
+use rocksdb::{DB, DBCompactionStyle, DBCompressionType, Direction, IteratorMode, Options, WriteBatch};
 use rocksdb::DBIterator;
 use rustler::{Encoder, Env, NifResult, Term};
 use rustler::resource::ResourceArc;
@@ -147,6 +147,24 @@ fn open<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
             "set_disable_auto_compactions" => {
                 if value.atom_to_string()?.as_str() == "true" {
                     opts.set_disable_auto_compactions(true);
+                }
+            }
+            "set_compression_type" => {
+                let compression_type = value.atom_to_string()?;
+                if compression_type == "none" {
+                    opts.set_compression_type(DBCompressionType::None);
+                } else if compression_type == "snappy" {
+                    opts.set_compression_type(DBCompressionType::Snappy);
+                } else if compression_type == "zlib" {
+                    opts.set_compression_type(DBCompressionType::Zlib);
+                } else if compression_type == "bz2" {
+                    opts.set_compression_type(DBCompressionType::Bz2);
+                } else if compression_type == "lz4" {
+                    opts.set_compression_type(DBCompressionType::Lz4);
+                } else if compression_type == "lz4hc" {
+                    opts.set_compression_type(DBCompressionType::Lz4hc);
+                // } else if compression_type == "Zstd" {
+                //     opts.set_compression_type(DBCompressionType::Zstd);
                 }
             }
             "set_compaction_style" => {
