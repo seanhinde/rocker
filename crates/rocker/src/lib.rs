@@ -754,12 +754,13 @@ fn drop_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 
 fn put_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let db = resource.db.write().unwrap();
+    
     let cf: String = args[1].decode()?;
     let key: &str = args[2].decode()?;
     let value: &str = args[3].decode()?;
-    let db = resource.db.write().unwrap();
     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-    match db.put_cf(cf_handler, key, value) {
+    match db.put_cf(cf_handler, key.as_bytes(), value.as_slice()) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
@@ -771,7 +772,7 @@ fn get_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let key: &str = args[2].decode()?;
     let db = resource.db.read().unwrap();
     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-    match db.get_cf(cf_handler, key) {
+    match db.get_cf(cf_handler, key.as_bytes()) {
         Ok(Some(v)) => {
             let mut value = OwnedBinary::new(v[..].len()).unwrap();
             value.clone_from_slice(&v[..]);
