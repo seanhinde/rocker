@@ -758,7 +758,7 @@ fn put_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     
     let cf: String = args[1].decode()?;
     let key: &str = args[2].decode()?;
-    let value: &str = args[3].decode()?;
+    let value: Binary = args[3].decode()?;
     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
     match db.put_cf(cf_handler, key.as_bytes(), value.as_slice()) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
