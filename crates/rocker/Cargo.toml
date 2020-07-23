@@ -12,4 +12,9 @@ crate-type = ["dylib"]
 [dependencies]
 lazy_static = "1.4.0"
 rustler = "0.21.0"
-rocksdb = { git = "https://github.com/Elzor/rust-rocksdb.git", branch = "stable_5.14.2" }
+# rocksdb = { git = "https://github.com/Elzor/rust-rocksdb.git", branch = "stable_6.7.3" }
+
+[dependencies.rocksdb]
+version = "0.14"
+default-features = false
+features = ["lz4"]

@@ -3,8 +3,8 @@ extern crate rocksdb;
 #[macro_use]
 extern crate rustler;
 
-use rocksdb::{DB, DBCompactionStyle, DBCompressionType, Direction, IteratorMode, Options, WriteBatch, BlockBasedOptions, ReadOptions};
-use rocksdb::DBIterator;
+use rocksdb::{DB, DBCompactionStyle, DBCompressionType, Options, WriteBatch, BlockBasedOptions, ReadOptions};
+// use rocksdb::DBIterator;
 use rustler::{Encoder, Env, NifResult, Term};
 use rustler::resource::ResourceArc;
 use rustler::schedule::SchedulerFlags;
@@ -27,9 +27,9 @@ struct DbResource {
     path: String,
 }
 
-struct IteratorResource {
-    iter: RwLock<DBIterator>,
-}
+// struct IteratorResource<'a> {
+//     iter: RwLock<DBIterator<'a>>,
+// }
 
 rustler_export_nifs!(
     "rocker",
@@ -45,12 +45,13 @@ rustler_export_nifs!(
         ("put", 3, put), //put key payload
         ("get", 2, get), //get key payload
         ("get_opt", 2, get_opt),
+        ("property_value", 2, property_value),
         ("delete", 2, delete), //delete key
         ("tx", 2, tx), //atomic write batch
-        ("iterator", 2, iterator), // get db iterator
-        ("prefix_iterator", 2, prefix_iterator), // get prefix iterator
-        ("iterator_valid", 1, iterator_valid), // validate iterator
-        ("next", 1, next), // go to next element in iterator
+        // ("iterator", 2, iterator), // get db iterator
+        // ("prefix_iterator", 2, prefix_iterator), // get prefix iterator
+        // ("iterator_valid", 1, iterator_valid), // validate iterator
+        // ("next", 1, next), // go to next element in iterator
         ("create_cf_default", 2, create_cf_default), // create cf with default options
         ("create_cf", 3, create_cf), // create cf with options
         ("list_cf", 1, list_cf), // list db cfs
@@ -58,15 +59,15 @@ rustler_export_nifs!(
         ("put_cf", 4, put_cf), //put key payload into cf
         ("get_cf", 3, get_cf), //get key payload from cf
         ("delete_cf", 3, delete_cf), //delete key from cf
-        ("iterator_cf", 3, iterator_cf), //get cf iterator
-        ("prefix_iterator_cf", 3, prefix_iterator_cf), // get prefix cf iterator
+        // ("iterator_cf", 3, iterator_cf), //get cf iterator
+        // ("prefix_iterator_cf", 3, prefix_iterator_cf), // get prefix cf iterator
     ],
     Some(on_load)
 );
 
 fn on_load<'a>(env: Env<'a>, _load_info: Term<'a>) -> bool {
     resource_struct_init!(DbResource, env);
-    resource_struct_init!(IteratorResource, env);
+    // resource_struct_init!(IteratorResource<'a>, env);
     true
 }
 
@@ -173,6 +174,15 @@ fn open<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 
                 block_based_options.disable_cache();
 
+                opts.set_block_based_table_factory(&block_based_options);
+            }
+            "set_lru_cache" => {
+                let limit: usize = value.decode()?;
+
+                let mut block_based_options = BlockBasedOptions::default();
+                
+                block_based_options.set_lru_cache(limit);
+                    
                 opts.set_block_based_table_factory(&block_based_options);
             }
             "set_compaction_style" => {
@@ -370,7 +380,7 @@ fn destroy<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 
 fn repair<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let path: String = args[0].decode()?;
-    match DB::repair(Options::default(), path) {
+    match DB::repair(&Options::default(), path) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
@@ -386,10 +396,12 @@ fn path<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 
 fn put<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
-    let key: Binary = args[1].decode()?;
-    let value: Binary = args[2].decode()?;
     let db = resource.db.write().unwrap();
-    match db.put(&key, &value) {
+    
+    let key: &str = args[1].decode()?;
+    let value: Binary = args[2].decode()?;
+    
+    match db.put(key.as_bytes(), value.as_slice()) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
@@ -397,9 +409,9 @@ fn put<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 
 fn get<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
-    let key: Binary = args[1].decode()?;
+    let key: &str = args[1].decode()?;
     let db = resource.db.read().unwrap();
-    match db.get(&key) {
+    match db.get(key.as_bytes()) {
         Ok(Some(v)) => {
             let mut value = OwnedBinary::new(v[..].len()).unwrap();
             value.clone_from_slice(&v[..]);
@@ -413,10 +425,10 @@ fn get<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 
 fn get_opt<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
-    let key: Binary = args[1].decode()?;
+    let key: &str = args[1].decode()?;
     let db = resource.db.read().unwrap();
     let readopts = ReadOptions::default();
-    match db.get_opt(&key, &readopts) {
+    match db.get_opt(key.as_bytes(), &readopts) {
         Ok(Some(v)) => {
             let mut value = OwnedBinary::new(v[..].len()).unwrap();
             value.clone_from_slice(&v[..]);
@@ -427,12 +439,28 @@ fn get_opt<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     }
 }
 
+fn property_value<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let name: &str = args[1].decode()?;
+    let db = resource.db.read().unwrap();
+
+    match db.property_value(name) {
+        Ok(Some(v)) => {
+            let value = OwnedBinary::new(v[..].len()).unwrap();
+            // value.clone_from_slice(&v[..]);
+            Ok((atoms::ok(), value.release(env) ).encode(env))
+        }
+        Ok(None) => Ok((atoms::notfound()).encode(env)),
+        Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
+    }
+}
+
 
 fn delete<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
-    let key: Binary = args[1].decode()?;
+    let key: &str = args[1].decode()?;
     let db = resource.db.write().unwrap();
-    match db.delete(&key) {
+    match db.delete(key.as_bytes()) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
@@ -450,26 +478,26 @@ fn tx<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
             let op: String = terms[0].atom_to_string()?;
             match op.as_str() {
                 "put" => {
-                    let key: Binary = terms[1].decode()?;
-                    let val: Binary = terms[2].decode()?;
-                    let _ = batch.put(&key, &val);
+                    let key: &str = terms[1].decode()?;
+                    let val: &str = terms[2].decode()?;
+                    let _ = batch.put(key.as_bytes(), val.as_bytes());
                 }
                 "put_cf" => {
                     let cf: String = terms[1].decode()?;
-                    let key: Binary = terms[2].decode()?;
-                    let value: Binary = terms[3].decode()?;
+                    let key: &str = terms[2].decode()?;
+                    let value: &str = terms[3].decode()?;
                     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-                    let _ = batch.put_cf(cf_handler, &key, &value);
+                    let _ = batch.put_cf(cf_handler, key, value);
                 }
                 "delete" => {
-                    let key: Binary = terms[1].decode()?;
-                    let _ = batch.delete(&key);
+                    let key: &str = terms[1].decode()?;
+                    let _ = batch.delete(key);
                 }
                 "delete_cf" => {
                     let cf: String = terms[1].decode()?;
-                    let key: Binary = terms[2].decode()?;
+                    let key: &str = terms[2].decode()?;
                     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-                    let _ = batch.delete_cf(cf_handler, &key);
+                    let _ = batch.delete_cf(cf_handler, key);
                 }
                 _ => {}
             }
@@ -487,81 +515,81 @@ fn tx<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 }
 
 
-fn iterator<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    let resource: ResourceArc<DbResource> = args[0].decode()?;
-    let mode_terms: Vec<Term> = ::rustler::types::tuple::get_tuple(args[1])?;
-    let db = resource.db.read().unwrap();
-    let mut iterator = db.iterator(IteratorMode::Start);
-    if mode_terms.len() >= 1 {
-        let mode: String = mode_terms[0].atom_to_string()?;
-        match mode.as_str() {
-            "end" => iterator = db.iterator(IteratorMode::End),
-            "from" => {
-                let from: Binary = mode_terms[1].decode()?;
-                if mode_terms.len() == 3 {
-                    let direction: String = mode_terms[2].atom_to_string()?;
-                    iterator = match direction.as_str() {
-                        "reverse" => db.iterator(IteratorMode::From(&from, Direction::Reverse)),
-                        _ => db.iterator(IteratorMode::From(&from, Direction::Forward)),
-                    }
-                } else {
-                    iterator = db.iterator(IteratorMode::From(&from, Direction::Forward));
-                }
-            }
-            _ => {}
-        }
-    }
+// fn iterator<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+//     let resource: ResourceArc<DbResource> = args[0].decode()?;
+//     let mode_terms: Vec<Term> = ::rustler::types::tuple::get_tuple(args[1])?;
+//     let db = resource.db.read().unwrap();
+//     let mut iterator = db.iterator(IteratorMode::Start);
+//     if mode_terms.len() >= 1 {
+//         let mode: String = mode_terms[0].atom_to_string()?;
+//         match mode.as_str() {
+//             "end" => iterator = db.iterator(IteratorMode::End),
+//             "from" => {
+//                 let from: Binary = mode_terms[1].decode()?;
+//                 if mode_terms.len() == 3 {
+//                     let direction: String = mode_terms[2].atom_to_string()?;
+//                     iterator = match direction.as_str() {
+//                         "reverse" => db.iterator(IteratorMode::From(&from, Direction::Reverse)),
+//                         _ => db.iterator(IteratorMode::From(&from, Direction::Forward)),
+//                     }
+//                 } else {
+//                     iterator = db.iterator(IteratorMode::From(&from, Direction::Forward));
+//                 }
+//             }
+//             _ => {}
+//         }
+//     }
 
-    let resource = ResourceArc::new(IteratorResource {
-        iter: RwLock::new(
-            iterator,
-        ),
-    });
+//     let resource = ResourceArc::new(IteratorResource {
+//         iter: RwLock::new(
+//             iterator,
+//         ),
+//     });
 
-    Ok((atoms::ok(), resource.encode(env)).encode(env))
-}
-
-
-fn prefix_iterator<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    let resource: ResourceArc<DbResource> = args[0].decode()?;
-    let prefix: Binary = args[1].decode()?;
-
-    let db = resource.db.read().unwrap();
-    let iterator = db.prefix_iterator(&prefix);
-
-    let resource = ResourceArc::new(IteratorResource {
-        iter: RwLock::new(
-            iterator,
-        ),
-    });
-
-    Ok((atoms::ok(), resource.encode(env)).encode(env))
-}
+//     Ok((atoms::ok(), resource.encode(env)).encode(env))
+// }
 
 
-fn iterator_valid<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    let resource: ResourceArc<IteratorResource> = args[0].decode()?;
-    let iter = resource.iter.read().unwrap();
-    Ok((atoms::ok(), iter.valid()).encode(env))
-}
+// fn prefix_iterator<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+//     let resource: ResourceArc<DbResource> = args[0].decode()?;
+//     let prefix: Binary = args[1].decode()?;
+
+//     let db = resource.db.read().unwrap();
+//     let iterator = db.prefix_iterator(&prefix);
+
+//     let resource = ResourceArc::new(IteratorResource {
+//         iter: RwLock::new(
+//             iterator,
+//         ),
+//     });
+
+//     Ok((atoms::ok(), resource.encode(env)).encode(env))
+// }
 
 
-fn next<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    let resource: ResourceArc<IteratorResource> = args[0].decode()?;
-    let mut iter = resource.iter.write().unwrap();
-    match iter.next() {
-        None => Ok((atoms::ok()).encode(env)),
-        Some((k, v)) => {
-            let mut key = OwnedBinary::new(k[..].len()).unwrap();
-            key.clone_from_slice(&k[..]);
+// fn iterator_valid<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+//     let resource: ResourceArc<IteratorResource> = args[0].decode()?;
+//     let iter = resource.iter.read().unwrap();
+//     Ok((atoms::ok(), iter.valid()).encode(env))
+// }
 
-            let mut value = OwnedBinary::new(v[..].len()).unwrap();
-            value.clone_from_slice(&v[..]);
 
-            Ok((atoms::ok(), key.release(env), value.release(env) ).encode(env))
-        }
-    }
-}
+// fn next<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+//     let resource: ResourceArc<IteratorResource> = args[0].decode()?;
+//     let mut iter = resource.iter.write().unwrap();
+//     match iter.next() {
+//         None => Ok((atoms::ok()).encode(env)),
+//         Some((k, v)) => {
+//             let mut key = OwnedBinary::new(k[..].len()).unwrap();
+//             key.clone_from_slice(&k[..]);
+
+//             let mut value = OwnedBinary::new(v[..].len()).unwrap();
+//             value.clone_from_slice(&v[..]);
+
+//             Ok((atoms::ok(), key.release(env), value.release(env) ).encode(env))
+//         }
+//     }
+// }
 
 
 fn create_cf_default<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
@@ -708,11 +736,11 @@ fn drop_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 fn put_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
     let cf: String = args[1].decode()?;
-    let key: Binary = args[2].decode()?;
-    let value: Binary = args[3].decode()?;
+    let key: &str = args[2].decode()?;
+    let value: &str = args[3].decode()?;
     let db = resource.db.write().unwrap();
     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-    match db.put_cf(cf_handler, &key, &value) {
+    match db.put_cf(cf_handler, key, value) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
@@ -721,10 +749,10 @@ fn put_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 fn get_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
     let cf: String = args[1].decode()?;
-    let key: Binary = args[2].decode()?;
+    let key: &str = args[2].decode()?;
     let db = resource.db.read().unwrap();
     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-    match db.get_cf(cf_handler, &key) {
+    match db.get_cf(cf_handler, key) {
         Ok(Some(v)) => {
             let mut value = OwnedBinary::new(v[..].len()).unwrap();
             value.clone_from_slice(&v[..]);
@@ -738,65 +766,65 @@ fn get_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 fn delete_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
     let cf: String = args[1].decode()?;
-    let key: Binary = args[2].decode()?;
+    let key: &str = args[2].decode()?;
     let db = resource.db.read().unwrap();
     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-    match db.delete_cf(cf_handler, &key) {
+    match db.delete_cf(cf_handler, key) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
 }
 
-fn iterator_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    let resource: ResourceArc<DbResource> = args[0].decode()?;
-    let cf: String = args[1].decode()?;
-    let mode_terms: Vec<Term> = ::rustler::types::tuple::get_tuple(args[2])?;
-    let db = resource.db.read().unwrap();
-    let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-    let mut iterator = db.iterator_cf(cf_handler, IteratorMode::Start);
-    if mode_terms.len() >= 1 {
-        let mode: String = mode_terms[0].atom_to_string()?;
-        match mode.as_str() {
-            "end" => iterator = db.iterator_cf(cf_handler, IteratorMode::End),
-            "from" => {
-                let from: Binary = mode_terms[1].decode()?;
-                if mode_terms.len() == 3 {
-                    let direction: String = mode_terms[2].atom_to_string()?;
-                    iterator = match direction.as_str() {
-                        "reverse" => db.iterator_cf(cf_handler, IteratorMode::From(&from, Direction::Reverse)),
-                        _ => db.iterator_cf(cf_handler, IteratorMode::From(&from, Direction::Forward)),
-                    }
-                } else {
-                    iterator = db.iterator_cf(cf_handler, IteratorMode::From(&from, Direction::Forward));
-                }
-            }
-            _ => {}
-        }
-    }
+// fn iterator_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+//     let resource: ResourceArc<DbResource> = args[0].decode()?;
+//     let cf: String = args[1].decode()?;
+//     let mode_terms: Vec<Term> = ::rustler::types::tuple::get_tuple(args[2])?;
+//     let db = resource.db.read().unwrap();
+//     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
+//     let mut iterator = db.iterator_cf(cf_handler, IteratorMode::Start);
+//     if mode_terms.len() >= 1 {
+//         let mode: String = mode_terms[0].atom_to_string()?;
+//         match mode.as_str() {
+//             "end" => iterator = db.iterator_cf(cf_handler, IteratorMode::End),
+//             "from" => {
+//                 let from: Binary = mode_terms[1].decode()?;
+//                 if mode_terms.len() == 3 {
+//                     let direction: String = mode_terms[2].atom_to_string()?;
+//                     iterator = match direction.as_str() {
+//                         "reverse" => db.iterator_cf(cf_handler, IteratorMode::From(&from, Direction::Reverse)),
+//                         _ => db.iterator_cf(cf_handler, IteratorMode::From(&from, Direction::Forward)),
+//                     }
+//                 } else {
+//                     iterator = db.iterator_cf(cf_handler, IteratorMode::From(&from, Direction::Forward));
+//                 }
+//             }
+//             _ => {}
+//         }
+//     }
 
-    let resource = ResourceArc::new(IteratorResource {
-        iter: RwLock::new(
-            iterator.unwrap(),
-        ),
-    });
+//     let resource = ResourceArc::new(IteratorResource {
+//         iter: RwLock::new(
+//             iterator.unwrap(),
+//         ),
+//     });
 
-    Ok((atoms::ok(), resource.encode(env)).encode(env))
-}
+//     Ok((atoms::ok(), resource.encode(env)).encode(env))
+// }
 
-fn prefix_iterator_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    let resource: ResourceArc<DbResource> = args[0].decode()?;
-    let cf: String = args[1].decode()?;
-    let prefix: Binary = args[2].decode()?;
+// fn prefix_iterator_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+//     let resource: ResourceArc<DbResource> = args[0].decode()?;
+//     let cf: String = args[1].decode()?;
+//     let prefix: Binary = args[2].decode()?;
 
-    let db = resource.db.read().unwrap();
-    let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-    let iterator = db.prefix_iterator_cf(cf_handler, &prefix);
+//     let db = resource.db.read().unwrap();
+//     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
+//     let iterator = db.prefix_iterator_cf(cf_handler, &prefix);
 
-    let resource = ResourceArc::new(IteratorResource {
-        iter: RwLock::new(
-            iterator.unwrap(),
-        ),
-    });
+//     let resource = ResourceArc::new(IteratorResource {
+//         iter: RwLock::new(
+//             iterator.unwrap(),
+//         ),
+//     });
 
-    Ok((atoms::ok(), resource.encode(env)).encode(env))
-}
+//     Ok((atoms::ok(), resource.encode(env)).encode(env))
+// }
