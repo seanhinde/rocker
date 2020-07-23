@@ -66,6 +66,9 @@ put(_Db, _Key, _Value) ->
 get(_Db, _Key) ->
     not_loaded(?LINE).
 
+get_opt(_Db, _Key) ->
+    not_loaded(?LINE).
+
 delete(_Db, _Key) ->
     not_loaded(?LINE).
 

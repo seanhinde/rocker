@@ -3,7 +3,7 @@ extern crate rocksdb;
 #[macro_use]
 extern crate rustler;
 
-use rocksdb::{DB, DBCompactionStyle, DBCompressionType, Direction, IteratorMode, Options, WriteBatch, BlockBasedOptions};
+use rocksdb::{DB, DBCompactionStyle, DBCompressionType, Direction, IteratorMode, Options, WriteBatch, BlockBasedOptions, ReadOptions};
 use rocksdb::DBIterator;
 use rustler::{Encoder, Env, NifResult, Term};
 use rustler::resource::ResourceArc;
@@ -44,6 +44,7 @@ rustler_export_nifs!(
         ("path", 1, path), //get fs path
         ("put", 3, put), //put key payload
         ("get", 2, get), //get key payload
+        ("get_opt", 2, get_opt),
         ("delete", 2, delete), //delete key
         ("tx", 2, tx), //atomic write batch
         ("iterator", 2, iterator), // get db iterator
@@ -394,12 +395,28 @@ fn put<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     }
 }
 
-
 fn get<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
     let key: Binary = args[1].decode()?;
     let db = resource.db.read().unwrap();
     match db.get(&key) {
+        Ok(Some(v)) => {
+            let mut value = OwnedBinary::new(v[..].len()).unwrap();
+            value.clone_from_slice(&v[..]);
+            Ok((atoms::ok(), value.release(env) ).encode(env))
+        }
+        Ok(None) => Ok((atoms::notfound()).encode(env)),
+        Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
+    }
+}
+
+
+fn get_opt<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let key: Binary = args[1].decode()?;
+    let db = resource.db.read().unwrap();
+    let readopts = ReadOptions::default();
+    match db.get_opt(&key, &readopts) {
         Ok(Some(v)) => {
             let mut value = OwnedBinary::new(v[..].len()).unwrap();
             value.clone_from_slice(&v[..]);
