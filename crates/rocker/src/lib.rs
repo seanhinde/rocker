@@ -463,9 +463,8 @@ fn property_int_value<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>
 
     match db.property_int_value(name) {
         Ok(Some(v)) => {
-            let value = OwnedBinary::new(v[..].len()).unwrap();
             // value.clone_from_slice(&v[..]);
-            Ok((atoms::ok(), value.release(env) ).encode(env))
+            Ok((atoms::ok(), v).encode(env))
         }
         Ok(None) => Ok((atoms::notfound()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
