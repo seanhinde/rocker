@@ -81,6 +81,9 @@ fn open<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let iter: MapIterator = args[1].decode()?;
 
     let mut opts = Options::default();
+
+    opts.set_compression_type(DBCompressionType::None);
+    
     for (key, value) in iter {
         let param = key.atom_to_string()?;
         match param.as_str() {
