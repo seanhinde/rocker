@@ -25,7 +25,7 @@
          drop_cf/2,
          put_cf/4,
          get_cf/3,
-         delete_cf/3,
+         delete_cf/3
          %% iterator_cf/3,
          %% prefix_iterator_cf/3
          ]).
