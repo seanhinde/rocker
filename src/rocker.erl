@@ -13,6 +13,7 @@
          get/2,
          get_opt/2,
          property_value/2,
+         property_int_value/2,
          delete/2,
          tx/2,
          %% iterator/2,
@@ -72,6 +73,9 @@ get_opt(_Db, _Key) ->
     not_loaded(?LINE).
 
 property_value(_Db, _Key) ->
+    not_loaded(?LINE).
+
+property_int_value(_Db, _Key) ->
     not_loaded(?LINE).
 
 delete(_Db, _Key) ->

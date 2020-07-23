@@ -46,6 +46,7 @@ rustler_export_nifs!(
         ("get", 2, get), //get key payload
         ("get_opt", 2, get_opt),
         ("property_value", 2, property_value),
+        ("property_int_value", 2, property_int_value),
         ("delete", 2, delete), //delete key
         ("tx", 2, tx), //atomic write batch
         // ("iterator", 2, iterator), // get db iterator
@@ -445,6 +446,22 @@ fn property_value<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let db = resource.db.read().unwrap();
 
     match db.property_value(name) {
+        Ok(Some(v)) => {
+            let value = OwnedBinary::new(v[..].len()).unwrap();
+            // value.clone_from_slice(&v[..]);
+            Ok((atoms::ok(), value.release(env) ).encode(env))
+        }
+        Ok(None) => Ok((atoms::notfound()).encode(env)),
+        Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
+    }
+}
+
+fn property_int_value<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let name: &str = args[1].decode()?;
+    let db = resource.db.read().unwrap();
+
+    match db.property_int_value(name) {
         Ok(Some(v)) => {
             let value = OwnedBinary::new(v[..].len()).unwrap();
             // value.clone_from_slice(&v[..]);
