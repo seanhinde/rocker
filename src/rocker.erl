@@ -16,19 +16,19 @@
          property_int_value/2,
          delete/2,
          tx/2,
-         %% iterator/2,
-         %% iterator_valid/1,
-         %% next/1,
-         %% prefix_iterator/2,
+         iterator/2,
+         iterator_valid/1,
+         next/1,
+         prefix_iterator/2,
          create_cf_default/2,
          create_cf/3,
          list_cf/1,
          drop_cf/2,
          put_cf/4,
          get_cf/3,
-         delete_cf/3
-         %% iterator_cf/3,
-         %% prefix_iterator_cf/3
+         delete_cf/3,
+         iterator_cf/3,
+         prefix_iterator_cf/3
          ]).
 
 %% Native library support
@@ -84,17 +84,17 @@ delete(_Db, _Key) ->
 tx(_Db, _Operations) ->
     not_loaded(?LINE).
 
-%% iterator(_Db, _Mode) ->
-%%     not_loaded(?LINE).
+iterator(_Db, _Mode) ->
+    not_loaded(?LINE).
 
-%% iterator_valid(_Iter) ->
-%%     not_loaded(?LINE).
+iterator_valid(_Iter) ->
+    not_loaded(?LINE).
 
-%% next(_Iter) ->
-%%     not_loaded(?LINE).
+next(_Iter) ->
+    not_loaded(?LINE).
 
-%% prefix_iterator(_Db, _Prefix) ->
-%%     not_loaded(?LINE).
+prefix_iterator(_Db, _Prefix) ->
+    not_loaded(?LINE).
 
 create_cf_default(_Db, _Name) ->
     not_loaded(?LINE).
@@ -117,11 +117,10 @@ get_cf(_Db, _Cf, _Key) ->
 delete_cf(_Db, _Cf, _Key) ->
     not_loaded(?LINE).
 
-%% iterator_cf(_Db, _Cf, _Mode) ->
-%%     not_loaded(?LINE).
-
-%% prefix_iterator_cf(_Db, _Cf, _Prefix) ->
-%%     not_loaded(?LINE).
+% iterator_cf(_Db, _Cf, _Mode) ->
+%     not_loaded(?LINE).
+% prefix_iterator_cf(_Db, _Cf, _Prefix) ->
+%     not_loaded(?LINE).
 
 
 %%==============================================================================

@@ -33,9 +33,10 @@ groups() ->
       [parallel, shuffle],
       [create_default, open_cf_default, list_cf, drop_cf,
         put_cf_get_cf, put_cf_get_cf_multi, delete_cf,
-        create_iterator_cf, create_iterator_cf_not_found_cf, next_end_cf,
-        next_from_forward_cf, next_from_reverse_cf,
-        prefix_iterator_cf, write_batch_cf]},
+        % create_iterator_cf, create_iterator_cf_not_found_cf, next_end_cf,
+        % next_from_forward_cf, next_from_reverse_cf,
+        % prefix_iterator_cf,
+        write_batch_cf]},
 
     {perf,
       [shuffle],
@@ -69,7 +70,7 @@ lxcode(_) ->
   {ok, vn1} = rocker:lxcode().
 
 open(_) ->
-  {ok, Db} = rocker:open(<<"/project/priv/db_path">>, #{
+  {ok, Db} = rocker:open(<<"./project/priv/db_path">>, #{
     create_if_missing => true,
     set_max_open_files => 1000,
     set_use_fsync => false,
@@ -91,21 +92,21 @@ open(_) ->
   ok.
 
 open_default(_) ->
-  {ok, Db} = rocker:open_default(<<"/project/priv/db_default_path">>),
+  {ok, Db} = rocker:open_default(<<"./project/priv/db_default_path">>),
   true = is_reference(Db),
   ok.
 
 open_multi_ptr(_) ->
-  {ok, Db1} = rocker:open_default(<<"/project/priv/db_default_path1">>),
+  {ok, Db1} = rocker:open_default(<<"./project/priv/db_default_path1">>),
   true = is_reference(Db1),
-  {ok, Db2} = rocker:open_default(<<"/project/priv/db_default_path2">>),
+  {ok, Db2} = rocker:open_default(<<"./project/priv/db_default_path2">>),
   true = is_reference(Db2),
-  {ok, Db3} = rocker:open_default(<<"/project/priv/db_default_path3">>),
+  {ok, Db3} = rocker:open_default(<<"./project/priv/db_default_path3">>),
   true = is_reference(Db3),
   ok.
 
 destroy(_) ->
-  Path = <<"/project/priv/db_destr">>,
+  Path = <<"./project/priv/db_destr">>,
   Test = self(),
   spawn(fun() ->
     {ok, Db} = rocker:open_default(Path),
@@ -119,7 +120,7 @@ destroy(_) ->
   ok.
 
 repair(_) ->
-  Path = <<"/project/priv/db_repair">>,
+  Path = <<"./project/priv/db_repair">>,
   Test = self(),
   spawn(fun() ->
     {ok, Db} = rocker:open_default(Path),
@@ -133,7 +134,7 @@ repair(_) ->
   ok.
 
 path(_) ->
-  Path = <<"/project/priv/db_get_path">>,
+  Path = <<"./project/priv/db_get_path">>,
   {ok, Db} = rocker:open_default(Path),
   {ok, Path} = rocker:path(Db),
   ok.
@@ -142,7 +143,7 @@ path(_) ->
 %% group: atomic
 %% =============================================================================
 put_get(_) ->
-  Path = <<"/project/priv/db_put">>,
+  Path = <<"./project/priv/db_put">>,
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:put(Db, <<"key">>, <<"value">>),
   {ok, <<"value">>} = rocker:get(Db, <<"key">>),
@@ -154,7 +155,7 @@ put_get(_) ->
   ok.
 
 put_get_bin(_) ->
-  Path = <<"/project/priv/db_put_bin">>,
+  Path = <<"./project/priv/db_put_bin">>,
   Key = term_to_binary({test, key}),
   Val = term_to_binary({test, val}),
   {ok, Db} = rocker:open_default(Path),
@@ -164,7 +165,7 @@ put_get_bin(_) ->
 
 
 delete(_) ->
-  Path = <<"/project/priv/db_delete">>,
+  Path = <<"./project/priv/db_delete">>,
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:put(Db, <<"key">>, <<"value">>),
   {ok, <<"value">>} = rocker:get(Db, <<"key">>),
@@ -173,7 +174,7 @@ delete(_) ->
   ok.
 
 write_batch(_) ->
-  Path = <<"/project/priv/db_bath">>,
+  Path = <<"./project/priv/db_bath">>,
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:put(Db, <<"k0">>, <<"v0">>),
   {ok, 4} = rocker:tx(Db, [
@@ -192,7 +193,7 @@ write_batch(_) ->
 %% group: iterator
 %% =============================================================================
 create_iterator(_) ->
-  Path = <<"/project/priv/db_iter1">>,
+  Path = <<"./project/priv/db_iter1">>,
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:put(Db, <<"k0">>, <<"v0">>),
   {ok, StartRef} = rocker:iterator(Db, {'start'}),
@@ -223,7 +224,7 @@ create_iterator(_) ->
   ok.
 
 next_start(_) ->
-  Path = <<"/project/priv/db_iter_start">>,
+  Path = <<"./project/priv/db_iter_start">>,
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:put(Db, <<"k0">>, <<"v0">>),
   ok = rocker:put(Db, <<"k1">>, <<"v1">>),
@@ -236,7 +237,7 @@ next_start(_) ->
   ok.
 
 next_end(_) ->
-  Path = <<"/project/priv/db_iter_end">>,
+  Path = <<"./project/priv/db_iter_end">>,
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:put(Db, <<"k0">>, <<"v0">>),
   ok = rocker:put(Db, <<"k1">>, <<"v1">>),
@@ -249,7 +250,7 @@ next_end(_) ->
   ok.
 
 next_from_forward(_) ->
-  Path = <<"/project/priv/db_iter_next_forward">>,
+  Path = <<"./project/priv/db_iter_next_forward">>,
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:put(Db, <<"k0">>, <<"v0">>),
   ok = rocker:put(Db, <<"k1">>, <<"v1">>),
@@ -261,7 +262,7 @@ next_from_forward(_) ->
   ok.
 
 next_from_reverse(_) ->
-  Path = <<"/project/priv/db_iter_next_reverse">>,
+  Path = <<"./project/priv/db_iter_next_reverse">>,
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:put(Db, <<"k0">>, <<"v0">>),
   ok = rocker:put(Db, <<"k1">>, <<"v1">>),
@@ -273,7 +274,7 @@ next_from_reverse(_) ->
   ok.
 
 prefix_iterator(_) ->
-  Path = <<"/project/priv/db_iter_prefix">>,
+  Path = <<"./project/priv/db_iter_prefix">>,
   {ok, Db} = rocker:open(Path, #{
     prefix_length => 3,
     create_if_missing => true
@@ -298,14 +299,14 @@ prefix_iterator(_) ->
 %% group: cf
 %% =============================================================================
 create_default(_) ->
-  Path = <<"/project/priv/db_cf">>,
+  Path = <<"./project/priv/db_cf">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:create_cf_default(Db, <<"testcf">>),
   ok.
 
 open_cf_default(_) ->
-  Path = <<"/project/priv/db_cf_open_default">>,
+  Path = <<"./project/priv/db_cf_open_default">>,
   rocker:destroy(Path),
   Self = self(),
   spawn(fun() ->
@@ -327,7 +328,7 @@ open_cf_default(_) ->
 
 
 list_cf(_) ->
-  Path = <<"/project/priv/db_list_cf">>,
+  Path = <<"./project/priv/db_list_cf">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:create_cf_default(Db, <<"testcf">>),
@@ -335,7 +336,7 @@ list_cf(_) ->
   ok.
 
 drop_cf(_) ->
-  Path = <<"/project/priv/db_drop_cf">>,
+  Path = <<"./project/priv/db_drop_cf">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:create_cf_default(Db, <<"testcf">>),
@@ -346,7 +347,7 @@ drop_cf(_) ->
   ok.
 
 put_cf_get_cf(_) ->
-  Path = <<"/project/priv/db_put_cf">>,
+  Path = <<"./project/priv/db_put_cf">>,
   rocker:destroy(Path),
   Self = self(),
   spawn(fun() ->
@@ -366,7 +367,7 @@ put_cf_get_cf(_) ->
   ok.
 
 put_cf_get_cf_multi(_) ->
-  Path = <<"/project/priv/db_put_cf_multi">>,
+  Path = <<"./project/priv/db_put_cf_multi">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:create_cf_default(Db, <<"testcf">>),
@@ -376,7 +377,7 @@ put_cf_get_cf_multi(_) ->
   ok.
 
 delete_cf(_) ->
-  Path = <<"/project/priv/db_delete_cf">>,
+  Path = <<"./project/priv/db_delete_cf">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   ok = rocker:create_cf_default(Db, <<"testcf">>),
@@ -387,7 +388,7 @@ delete_cf(_) ->
   ok.
 
 create_iterator_cf(_) ->
-  Path = <<"/project/priv/db_iter_cf1">>,
+  Path = <<"./project/priv/db_iter_cf1">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   Cf = <<"test_cf">>,
@@ -422,7 +423,7 @@ create_iterator_cf(_) ->
   ok.
 
 create_iterator_cf_not_found_cf(_) ->
-  Path = <<"/project/priv/db_iter_cf1_not_found">>,
+  Path = <<"./project/priv/db_iter_cf1_not_found">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   Cf = <<"test_cf">>,
@@ -433,7 +434,7 @@ create_iterator_cf_not_found_cf(_) ->
   ok.
 
 next_start_cf(_) ->
-  Path = <<"/project/priv/db_iter_cf2">>,
+  Path = <<"./project/priv/db_iter_cf2">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   Cf = <<"test_cf">>,
@@ -450,7 +451,7 @@ next_start_cf(_) ->
   ok.
 
 next_end_cf(_) ->
-  Path = <<"/project/priv/db_iter_cf3">>,
+  Path = <<"./project/priv/db_iter_cf3">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   Cf = <<"test_cf">>,
@@ -468,7 +469,7 @@ next_end_cf(_) ->
   ok.
 
 next_from_forward_cf(_) ->
-  Path = <<"/project/priv/db_iter_cf4">>,
+  Path = <<"./project/priv/db_iter_cf4">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   Cf = <<"test_cf">>,
@@ -485,7 +486,7 @@ next_from_forward_cf(_) ->
   ok.
 
 next_from_reverse_cf(_) ->
-  Path = <<"/project/priv/db_iter_cf5">>,
+  Path = <<"./project/priv/db_iter_cf5">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   Cf = <<"test_cf">>,
@@ -502,7 +503,7 @@ next_from_reverse_cf(_) ->
   ok.
 
 prefix_iterator_cf(_) ->
-  Path = <<"/project/priv/db_iter_cf6">>,
+  Path = <<"./project/priv/db_iter_cf6">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   Cf = <<"test_cf">>,
@@ -527,7 +528,7 @@ prefix_iterator_cf(_) ->
   ok.
 
 write_batch_cf(_) ->
-  Path = <<"/project/priv/db_bath_cf">>,
+  Path = <<"./project/priv/db_bath_cf">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   Cf1 = <<"test_cf1">>,
@@ -576,7 +577,7 @@ write_batch_cf(_) ->
 %% group: perf
 %% =============================================================================
 perf_default(_) ->
-  Path = <<"/project/priv/perf_default">>,
+  Path = <<"./project/priv/perf_default">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open_default(Path),
   W = perftest:comprehensive(1000, fun() ->
